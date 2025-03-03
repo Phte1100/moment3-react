@@ -1,0 +1,10 @@
+.text-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: 80vh;
+  }
+  
+  h1, h2, h3 {
+    text-align: center;
+  }
+  
