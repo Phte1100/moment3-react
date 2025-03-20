@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getAllMenuItems } from "../services/MenuService";
-import { Link, NavLink } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
 interface MenuItem {
   _id: string;
