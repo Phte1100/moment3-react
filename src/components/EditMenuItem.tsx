@@ -1,61 +1,63 @@
-import React, { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import { getMenuItemById, updateMenuItem } from "../services/MenuService";
 
-interface MenuItem { //interface för menyobjekt
+interface MenuItem {
   _id: string;
   name: string;
-  description?: string;
+  description: string;
   price: number;
-  category?: string;
+  category: string;
 }
 
-interface EditMenuItemProps { //interface för redigering av menyobjekt
+type MenuItemFormData = Omit<MenuItem, "_id">;
+
+interface EditMenuItemProps {
   menuItemId: string | null;
   onClose: () => void;
   refreshMenu: () => void;
 }
 
+const schema = yup.object().shape({
+  name: yup.string().required("Namn är obligatoriskt"),
+  description: yup.string().default(""),
+  price: yup.number().positive("Pris måste vara större än 0").required("Pris är obligatoriskt"),
+  category: yup.string().default(""),
+});
+
 const EditMenuItem: React.FC<EditMenuItemProps> = ({ menuItemId, onClose, refreshMenu }) => {
-  const [menuItem, setMenuItem] = useState<MenuItem>({ //state för menyobjekt
-    _id: "",
-    name: "",
-    description: "",
-    price: 0,
-    category: "",
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<MenuItemFormData>({
+    resolver: yupResolver(schema),
   });
 
-  useEffect(() => { //hämtar menyobjekt
+  useEffect(() => {
     if (!menuItemId) return;
-    fetchMenuItem(menuItemId);
-  }, [menuItemId]);
 
-  const fetchMenuItem = async (id: string) => { //funktion för att hämta menyobjekt
-    try {
-      const response = await getMenuItemById(id);
-      if (!response.data) {
-        console.error("No data received from API!");
-        return;
+    const fetchMenuItem = async () => {
+      try {
+        const response = await getMenuItemById(menuItemId);
+        if (response.data) {
+          const { _id, ...formValues } = response.data;
+
+          Object.keys(formValues).forEach((key) => {
+            const typedKey = key as keyof MenuItemFormData;
+            setValue(typedKey, formValues[typedKey] ?? (typeof formValues[typedKey] === "number" ? 0 : ""));
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching menu item:", error);
       }
-      setMenuItem(response.data);
-    } catch (error) {
-      console.error("Error fetching menu item:", error);
-    }
-  };
+    };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setMenuItem((prev) => ({ //uppdaterar menyobjekt
-      ...prev,
-      [name]: name === "price" ? parseFloat(value) || 0 : value,
-    }));
-  };
+    fetchMenuItem();
+  }, [menuItemId, setValue]);
 
-  const handleSubmit = async (e: React.FormEvent) => { //skickar formulärdata till backend
-    e.preventDefault();
-    if (!menuItem._id) return;
-
+  const onSubmit = async (data: MenuItemFormData) => {
     try {
-      await updateMenuItem(menuItem._id, menuItem);
+      const updatedItem: MenuItem = { _id: menuItemId!, ...data };
+      await updateMenuItem(menuItemId!, updatedItem);
       refreshMenu();
       onClose();
     } catch (error) {
@@ -64,40 +66,31 @@ const EditMenuItem: React.FC<EditMenuItemProps> = ({ menuItemId, onClose, refres
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit(onSubmit)}>
       <div className="field">
         <label className="label">Namn</label>
-        <div className="control">
-          <input className="input" type="text" name="name" value={menuItem.name} onChange={handleChange} required />
-        </div>
+        <input {...register("name")} className="input" />
+        {errors.name && <p className="has-text-danger">{errors.name.message}</p>}
       </div>
 
       <div className="field">
         <label className="label">Beskrivning</label>
-        <div className="control">
-          <input className="input" type="text" name="description" value={menuItem.description} onChange={handleChange} />
-        </div>
+        <input {...register("description")} className="input" />
       </div>
 
       <div className="field">
         <label className="label">Pris</label>
-        <div className="control">
-          <input className="input" type="number" name="price" value={menuItem.price} onChange={handleChange} required />
-        </div>
+        <input {...register("price")} className="input" type="number" />
+        {errors.price && <p className="has-text-danger">{errors.price.message}</p>}
       </div>
 
       <div className="field">
         <label className="label">Kategori</label>
-        <div className="control">
-          <input className="input" type="text" name="category" value={menuItem.category} onChange={handleChange} />
-        </div>
+        <input {...register("category")} className="input" />
+        {errors.category && <p className="has-text-danger">{errors.category.message}</p>}
       </div>
 
-      <div className="field">
-        <div className="control">
-          <button className="button is-primary" type="submit">Spara ändring</button>
-        </div>
-      </div>
+      <button className="button is-primary" type="submit">Spara ändring</button>
     </form>
   );
 };

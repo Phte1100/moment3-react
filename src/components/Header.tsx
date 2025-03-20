@@ -23,9 +23,11 @@ const Header = () => {
         <NavLink to="/" className="navbar-item">
           Start
         </NavLink>
-        <NavLink to="/Cms" className="navbar-item">
-          Administrera
-        </NavLink>
+        {user && (
+            <NavLink to="/Cms" className="navbar-item">
+              Administrera
+            </NavLink>
+          )}
       </div>
     </div>
 
